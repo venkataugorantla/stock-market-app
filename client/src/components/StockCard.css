@@ -1,0 +1,108 @@
+/* ── Card base ─────────────────────────────────────────────────────────────── */
+.stock-card {
+  position: relative;
+  flex: 0 0 130px;
+  min-height: 118px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition),
+              transform var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+}
+
+.stock-card:hover {
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.stock-card--up   { border-bottom: 2px solid var(--green); }
+.stock-card--down { border-bottom: 2px solid var(--red); }
+
+/* ── Header row ────────────────────────────────────────────────────────────── */
+.stock-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stock-card__symbol {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--blue);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.02em;
+}
+
+.stock-card__arrow {
+  font-size: 0.7rem;
+}
+.stock-card__arrow.up   { color: var(--green); }
+.stock-card__arrow.down { color: var(--red); }
+
+/* ── Company name ──────────────────────────────────────────────────────────── */
+.stock-card__name {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  flex: 1;
+}
+
+/* ── Price ─────────────────────────────────────────────────────────────────── */
+.stock-card__price {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: auto;
+}
+
+/* ── Change ────────────────────────────────────────────────────────────────── */
+.stock-card__change {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.stock-card__change.positive { color: var(--green); }
+.stock-card__change.negative { color: var(--red); }
+
+/* ── "View details" ghost CTA ──────────────────────────────────────────────── */
+.stock-card__view {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 7px;
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.stock-card:hover .stock-card__view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Empty / no-data state ─────────────────────────────────────────────────── */
+.stock-card--empty {
+  opacity: 0.5;
+  align-items: center;
+  justify-content: center;
+}
+
+.stock-card__nodata {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}

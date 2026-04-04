@@ -1,0 +1,107 @@
+/* ── App shell ─────────────────────────────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+  width: 100%;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: 72px 16px 56px;
+}
+
+.hero__eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 16px;
+}
+
+.hero__title {
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+
+.hero__title--accent {
+  background: linear-gradient(135deg, #58a6ff 0%, #bc8cff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero__sub {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+
+/* ── Section heading ───────────────────────────────────────────────────────── */
+.exchanges-section {
+  margin-top: 16px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.section-heading__icon {
+  font-size: 2.2rem;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.section-heading__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.section-heading__sub {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* ── Exchanges grid ────────────────────────────────────────────────────────── */
+.exchanges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(620px, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 680px) {
+  .exchanges-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero { padding: 48px 8px 36px; }
+  .main-content { padding: 0 12px 40px; }
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+.app-footer {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  padding: 20px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}

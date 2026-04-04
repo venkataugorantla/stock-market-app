@@ -1,0 +1,17 @@
+{
+  "name": "stock-market-app",
+  "version": "1.0.0",
+  "description": "Global Stock Market Trading Application",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "start": "concurrently \"npm run server:start\" \"npm run client:preview\"",
+    "server:start": "cd server && npm start",
+    "client:preview": "cd client && npm run preview"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

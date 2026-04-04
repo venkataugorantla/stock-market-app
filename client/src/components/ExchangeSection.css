@@ -1,0 +1,133 @@
+/* ── Exchange card shell ───────────────────────────────────────────────────── */
+.exchange-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+}
+
+.exchange-section:hover {
+  box-shadow: 0 0 0 1px var(--exchange-color, var(--border-light)),
+              var(--shadow);
+}
+
+/* ── Section header ────────────────────────────────────────────────────────── */
+.exchange-section__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.exchange-section__flag-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.exchange-section__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.exchange-section__name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exchange-section__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.exchange-section__short {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--exchange-color, var(--blue));
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.exchange-section__sep { color: var(--text-muted); font-size: 0.72rem; }
+
+.exchange-section__country {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.exchange-section__badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Stock cards row ───────────────────────────────────────────────────────── */
+.exchange-section__stocks {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding: 16px;
+  gap: 10px;
+  scrollbar-width: thin;
+}
+
+.exchange-section__error {
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Skeleton loading ──────────────────────────────────────────────────────── */
+.stock-card-skeleton {
+  flex: 0 0 120px;
+  min-height: 110px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--border) 25%, var(--border-light) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  width: 100%;
+}
+
+.skeleton-line--short  { width: 55%; }
+.skeleton-line--price  { height: 18px; width: 75%; margin-top: auto; }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
