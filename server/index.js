@@ -324,6 +324,19 @@ app.get('/api/summary/:symbol', async (req, res) => {
   }
 });
 
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Serve React frontend build (for production / ngrok sharing)
+const distPath = path.join(__dirname, '../client/dist');
+app.use(express.static(distPath));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
-  console.log(`\n✅  Stock Market API   →  http://localhost:${PORT}\n`);
+  console.log(`\n✅  Stock Market App   →  http://localhost:${PORT}\n`);
 });
