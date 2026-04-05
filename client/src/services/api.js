@@ -4,8 +4,8 @@ const BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
   : '/api';
 
-async function request(url) {
-  const res = await fetch(url);
+async function request(url, options) {
+  const res = await fetch(url, options);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `HTTP ${res.status}`);
@@ -27,3 +27,10 @@ export const getHistory = (symbol, period = '1y') =>
 
 export const getSummary = (symbol) =>
   request(`${BASE}/summary/${encodeURIComponent(symbol)}`);
+
+export const chatWithAgent = (messages) =>
+  request(`${BASE}/agent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });

@@ -337,6 +337,210 @@ app.get('/api/summary/:symbol', async (req, res) => {
   }
 });
 
+// ─── Stock Agent helpers ──────────────────────────────────────────────────────
+const AGENT_STOP_WORDS = new Set([
+  'A','I','IN','IS','IT','OF','ON','OR','TO','UP','US','BE','BY','GO','IF','NO',
+  'AS','AT','DO','AN','AM','ME','MY','SO','WE','HE','OK','THE','AND','FOR','ARE',
+  'BUT','NOT','YOU','ALL','CAN','HER','WAS','ONE','OUR','OUT','DAY','GET','HAS',
+  'HIM','HIS','HOW','ITS','NEW','NOW','OLD','SEE','TWO','WAY','WHO','DID','GOT',
+  'LET','PUT','SAY','SHE','TOO','USE','BAD','BIG','WITH','HAVE','FROM','THAT',
+  'THIS','WILL','YOUR','THEY','BEEN','GOOD','MUCH','SOME','TIME','VERY','WHEN',
+  'WHAT','JUST','INTO','YEAR','ALSO','BACK','COME','GIVE','MOST','OVER','SAME',
+  'TAKE','THAN','THEM','THEN','WELL','WENT','WERE','SAID','EACH','LONG','MADE',
+  'MAKE','MANY','NEED','NEXT','ONLY','OPEN','PART','TELL','USED','WANT','HIGH',
+  'HOLD','KEEP','LAST','LOOK','SHOW','SUCH','TURN','BEST','BOTH','DOWN','EVEN',
+  'EVER','FIND','FOUR','FREE','HELP','LIKE','MOVE','PLAY','REAL','SELL','STOP',
+  'AREA','BOOK','CASE','CITY','FACE','FACT','GAVE','GOES','GONE','HALF','HAND',
+  'HARD','HEAD','HOME','IDEA','LATE','LEAD','LEFT','LESS','LIFE','LIVE','ONCE',
+  'PLAN','ROAD','ROOM','RULE','SIDE','SOON','STAY','TALK','THUS','TOLD','TOOK',
+  'TREE','TRUE','UNIT','WAIT','WALK','WEEK','WIDE','WIND','WORD','WORK','ABLE',
+  'AFTER','AGAIN','ALONG','ASKED','BEGAN','BELOW','BRING','BUILT','CHECK','CLOSE',
+  'COULD','DAILY','EARLY','EVERY','FIRST','FOUND','GIVEN','GOING','GREAT','GROUP',
+  'HANDS','HEARD','HENCE','HUMAN','LARGE','LATER','LEARN','LEAST','LIGHT','MIGHT',
+  'MONEY','NEVER','OFTEN','OTHER','PLACE','POINT','PRICE','QUITE','RANGE','RATIO',
+  'RIGHT','ROUND','SHALL','SHORT','SINCE','SMALL','STILL','STOCK','THERE','THING',
+  'THINK','THOSE','THREE','TODAY','TOTAL','TRADE','UNDER','UNTIL','USING','VALUE',
+  'WATCH','WEEKS','WHILE','WHITE','WHOLE','WHOSE','WORLD','WOULD','WRITE','YEARS',
+  'YIELD','ABOUT','ABOVE','AVOID','BASED','BONDS','BROAD','CHART','CLEAR','ENTRY',
+  'EQUAL','FOCUS','FORCE','INDEX','ISSUE','LEVEL','LIMIT','LOCAL','LOWER','MAJOR',
+  'MAKER','MATCH','MEANS','MIXED','MODEL','MONTH','MOVED','NAMED','NOTED','ORDER',
+  'PAPER','PARTY','PRIOR','PROVE','RAPID','READY','REFER','SOLID','SPACE','STAND',
+  'START','STATE','SURGE','THEIR','WHERE','WHICH','BUY','RATE','CASH','FUND',
+  'BOND','RISK','GAIN','LOSS','BULL','BEAR','CALL','PUTS','CALLS','PIVOT','ETF',
+  'NYSE','NASDAQ','AMEX','OTC','ADR','IPO','CEO','CFO','CTO','ROE','EPS','PE',
+  'INFO','DATA','MORE','NEXT','LAST','SHOW','GIVE','TELL','WHAT','DOES','WHEN',
+  'DOES','THAN','THAT',
+]);
+
+function extractSymbols(text) {
+  const found = new Set();
+  // Priority 1: $TICKER patterns (most reliable signal)
+  for (const m of text.matchAll(/\$([A-Za-z]{1,5})\b/g)) {
+    found.add(m[1].toUpperCase());
+  }
+  // Priority 2: uppercase 2-5 char words not in the stop list
+  for (const m of text.matchAll(/\b([A-Z]{2,5})\b/g)) {
+    if (!AGENT_STOP_WORDS.has(m[1])) found.add(m[1]);
+  }
+  return [...found].slice(0, 5);
+}
+
+async function fetchQuoteForAgent(symbol) {
+  const cached = fromCache(`quote:${symbol}`);
+  if (cached) return cached;
+  const yPath = `/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const data  = await withConcurrency(() => withRetry(() => yfGetJson(yPath)));
+  const quote = parseChartQuote(data);
+  toCache(`quote:${symbol}`, quote, CACHE_TTL.quote);
+  return quote;
+}
+
+async function fetchSummaryForAgent(symbol) {
+  const cached = fromCache(`summary:${symbol}`);
+  if (cached) return cached;
+  const crumbPart = _yfCrumb ? `&crumb=${encodeURIComponent(_yfCrumb)}` : '';
+  const yPath = `/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=summaryDetail,financialData${crumbPart}`;
+  const data  = await withConcurrency(() => withRetry(() => yfGetJson(yPath)));
+  const result = data?.quoteSummary?.result?.[0] ?? {};
+  function flatten(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if ('raw' in obj) return obj.raw;
+    const out = {};
+    for (const k of Object.keys(obj)) out[k] = flatten(obj[k]);
+    return out;
+  }
+  const summary = {
+    summaryDetail: flatten(result.summaryDetail) || {},
+    financialData: flatten(result.financialData) || {},
+  };
+  toCache(`summary:${symbol}`, summary, CACHE_TTL.summary);
+  return summary;
+}
+
+function fmtNum(n, decimals = 2) {
+  if (n == null || n === '') return 'N/A';
+  const num = Number(n);
+  if (isNaN(num)) return 'N/A';
+  if (Math.abs(num) >= 1e12) return `$${(num / 1e12).toFixed(1)}T`;
+  if (Math.abs(num) >= 1e9)  return `$${(num / 1e9).toFixed(1)}B`;
+  if (Math.abs(num) >= 1e6)  return `$${(num / 1e6).toFixed(1)}M`;
+  return num.toFixed(decimals);
+}
+
+function buildStockContext(symbol, quote, summary) {
+  const lines = [`### ${symbol} — ${quote.longName || symbol}`];
+  lines.push(`Exchange: ${quote.fullExchangeName || 'N/A'} | Currency: ${quote.currency}`);
+  lines.push(`Price: ${fmtNum(quote.regularMarketPrice)} | Change: ${fmtNum(quote.regularMarketChange)} (${fmtNum(quote.regularMarketChangePercent)}%)`);
+  lines.push(`Open: ${fmtNum(quote.regularMarketOpen)} | High: ${fmtNum(quote.regularMarketDayHigh)} | Low: ${fmtNum(quote.regularMarketDayLow)}`);
+  lines.push(`Volume: ${fmtNum(quote.regularMarketVolume, 0)} | 52W High: ${fmtNum(quote.fiftyTwoWeekHigh)} | 52W Low: ${fmtNum(quote.fiftyTwoWeekLow)}`);
+  const sd = summary?.summaryDetail || {};
+  const fd = summary?.financialData  || {};
+  if (sd.marketCap)      lines.push(`Market Cap: ${fmtNum(sd.marketCap)}`);
+  if (sd.trailingPE)     lines.push(`P/E (trailing): ${fmtNum(sd.trailingPE, 1)}`);
+  if (sd.forwardPE)      lines.push(`P/E (forward): ${fmtNum(sd.forwardPE, 1)}`);
+  if (sd.dividendYield)  lines.push(`Dividend Yield: ${(sd.dividendYield * 100).toFixed(2)}%`);
+  if (sd.beta)           lines.push(`Beta: ${fmtNum(sd.beta, 2)}`);
+  if (fd.revenueGrowth)  lines.push(`Revenue Growth YoY: ${(fd.revenueGrowth * 100).toFixed(1)}%`);
+  if (fd.grossMargins)   lines.push(`Gross Margin: ${(fd.grossMargins * 100).toFixed(1)}%`);
+  if (fd.returnOnEquity) lines.push(`ROE: ${(fd.returnOnEquity * 100).toFixed(1)}%`);
+  if (fd.totalDebt && fd.totalCash) lines.push(`Debt: ${fmtNum(fd.totalDebt)} | Cash: ${fmtNum(fd.totalCash)}`);
+  if (fd.recommendationKey)  lines.push(`Analyst Consensus: ${fd.recommendationKey.toUpperCase()}`);
+  if (fd.targetMeanPrice)    lines.push(`Analyst Target Price: ${fmtNum(fd.targetMeanPrice)}`);
+  if (fd.numberOfAnalystOpinions) lines.push(`Analyst Count: ${fd.numberOfAnalystOpinions}`);
+  return lines.join('\n');
+}
+
+async function callGroqAPI(messages) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY is not configured. Add it at https://vercel.com/dashboard → Project → Settings → Environment Variables.');
+  }
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:      'llama-3.3-70b-versatile',
+      messages,
+      max_tokens: 1024,
+      temperature: 0.3,
+    }),
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Groq API error ${resp.status}`);
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content ?? 'No response generated.';
+}
+
+// ─── POST /api/agent ──────────────────────────────────────────────────────────
+app.post('/api/agent', async (req, res) => {
+  const { messages } = req.body ?? {};
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: 'messages array required' });
+  }
+
+  // Extract stock symbols from recent context
+  const recentText = messages.slice(-4).map(m => m.content).join(' ');
+  const symbols    = extractSymbols(recentText);
+
+  // Fetch live data for detected symbols (parallel, fail silently per symbol)
+  let stockContext = '';
+  if (symbols.length > 0) {
+    const results = await Promise.allSettled(
+      symbols.map(async (sym) => {
+        const [quoteRes, summaryRes] = await Promise.allSettled([
+          fetchQuoteForAgent(sym),
+          fetchSummaryForAgent(sym),
+        ]);
+        if (quoteRes.status !== 'fulfilled') return null;
+        return buildStockContext(sym, quoteRes.value, summaryRes.value ?? {});
+      })
+    );
+    stockContext = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
+      .join('\n\n');
+  }
+
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+
+  const systemPrompt = [
+    `You are StockSense AI, an expert stock market analyst with deep knowledge of global financial markets, technical analysis, and fundamental analysis. You help investors make clear, data-driven decisions.`,
+    `Today is ${today}.`,
+    stockContext
+      ? `## Real-Time Market Data (fetched live)\n\n${stockContext}`
+      : 'No specific ticker was detected. Provide general, helpful financial guidance.',
+    `## Your Instructions`,
+    `- Base your analysis on the live data provided above`,
+    `- Cite specific numbers: prices, ratios, percentage changes`,
+    `- Identify key signals: trend direction, momentum, valuation vs. peers`,
+    `- Give concrete next steps: entry zone, price target, stop-loss, or hold/avoid reasoning`,
+    `- Use **bold** for key figures and action items`,
+    `- Use markdown: ## headers, bullet lists, **bold**`,
+    `- Keep responses focused (under 400 words unless deep analysis is requested)`,
+    `- End every response with a one-line risk disclaimer in italics`,
+    `⚠ This is for educational purposes. Always consult a licensed financial advisor before investing.`,
+  ].join('\n\n');
+
+  try {
+    const content = await callGroqAPI([
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ]);
+    res.json({ content });
+  } catch (err) {
+    console.error('[agent]', err.message);
+    const isConfig = err.message.includes('GROQ_API_KEY');
+    res.status(isConfig ? 503 : 502).json({ error: err.message });
+  }
+});
+
 // In local dev (not Vercel), serve the React build and start listening
 if (!process.env.VERCEL) {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));

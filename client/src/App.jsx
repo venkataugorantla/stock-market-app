@@ -3,6 +3,7 @@ import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import ExchangeSection from './components/ExchangeSection';
 import StockModal from './components/StockModal';
+import StockAgent from './components/StockAgent';
 import { exchanges } from './data/exchanges';
 import './App.css';
 
@@ -80,6 +81,8 @@ export default function App() {
       {selectedStock && (
         <StockModal symbol={selectedStock} onClose={handleModalClose} />
       )}
+
+      <StockAgent />
     </div>
   );
 }
