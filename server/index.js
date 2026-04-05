@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import https from 'https';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -74,9 +76,19 @@ async function refreshYFAuth() {
   }
 }
 
-// Crumb is optional — only needed by /api/summary. Attempt lazily after a delay.
-setTimeout(() => refreshYFAuth().catch(() => {}), 10_000);
-setInterval(() => refreshYFAuth().catch(() => {}), 25 * 60 * 1000);
+// Lazy init: refresh crumb once on first API request (works in both Express and Vercel serverless)
+let _authInitialized = false;
+function ensureAuth() {
+  if (!_authInitialized) {
+    _authInitialized = true;
+    refreshYFAuth().catch(() => {});
+    // Only schedule interval in long-lived processes (skipped in serverless)
+    if (!process.env.VERCEL) {
+      setInterval(() => refreshYFAuth().catch(() => {}), 25 * 60 * 1000);
+    }
+  }
+}
+app.use((_req, _res, next) => { ensureAuth(); next(); });
 
 // ─── Parse v8/finance/chart response into a quote-like object ─────────────────
 function parseChartQuote(data) {
@@ -123,11 +135,12 @@ function parseChartHistory(data) {
   })).filter(r => r.close != null);
 }
 
-// Allow localhost (dev) and any Vercel deployment URL (production)
+// Allow localhost (dev), GitHub Pages, and any Vercel deployment URL (production)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://127.0.0.1:5173',
+  'https://venkataugorantla.github.io',
   /^https:\/\/.*\.vercel\.app$/,
 ];
 app.use(cors({ origin: allowedOrigins }));
@@ -324,19 +337,13 @@ app.get('/api/summary/:symbol', async (req, res) => {
   }
 });
 
-import { createRequire } from 'module';
-import { fileURLToPath } from 'url';
-import path from 'path';
+// In local dev (not Vercel), serve the React build and start listening
+if (!process.env.VERCEL) {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const distPath  = path.join(__dirname, '../client/dist');
+  app.use(express.static(distPath));
+  app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+  app.listen(PORT, () => console.log(`\n✅  Stock Market App   →  http://localhost:${PORT}\n`));
+}
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Serve React frontend build (for production / ngrok sharing)
-const distPath = path.join(__dirname, '../client/dist');
-app.use(express.static(distPath));
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
-
-app.listen(PORT, () => {
-  console.log(`\n✅  Stock Market App   →  http://localhost:${PORT}\n`);
-});
+export default app;
