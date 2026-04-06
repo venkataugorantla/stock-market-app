@@ -57,7 +57,7 @@ export default function App() {
             <div>
               <h2 className="section-heading__title">Major World Exchanges</h2>
               <p className="section-heading__sub">
-                Top 5 stocks by market cap from each leading exchange — click any stock for full details.
+              Top stocks by market cap from each leading exchange — click any stock for full details.
               </p>
             </div>
           </div>

@@ -3,10 +3,17 @@ import { getQuotes } from '../services/api';
 import StockCard from './StockCard';
 import './ExchangeSection.css';
 
+const INITIAL_VISIBLE = 10;
+
 export default function ExchangeSection({ exchange, onStockSelect }) {
-  const [quotes, setQuotes]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [quotes,   setQuotes]   = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const total    = exchange.topStocks.length;
+  const visible  = expanded ? total : Math.min(INITIAL_VISIBLE, total);
+  const symbols  = exchange.topStocks.slice(0, visible);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,12 +32,10 @@ export default function ExchangeSection({ exchange, onStockSelect }) {
     };
 
     fetchQuotes();
-    // Refresh every 60 s
     const timer = setInterval(fetchQuotes, 60_000);
     return () => { cancelled = true; clearInterval(timer); };
   }, [exchange.id]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Map symbol → quote for quick lookup
   const quoteMap = Object.fromEntries((quotes || []).map(q => [q.symbol, q]));
 
   return (
@@ -48,12 +53,12 @@ export default function ExchangeSection({ exchange, onStockSelect }) {
             <span className="exchange-section__country">{exchange.country}</span>
           </span>
         </div>
-        <span className="exchange-section__badge">Top 5</span>
+        <span className="exchange-section__badge">{total} stocks</span>
       </div>
 
-      {/* Stocks row */}
+      {/* Stocks grid */}
       <div className="exchange-section__stocks">
-        {loading && exchange.topStocks.map(sym => (
+        {loading && exchange.topStocks.slice(0, INITIAL_VISIBLE).map(sym => (
           <div key={sym} className="stock-card-skeleton">
             <div className="skeleton-line skeleton-line--short" />
             <div className="skeleton-line" />
@@ -67,7 +72,7 @@ export default function ExchangeSection({ exchange, onStockSelect }) {
           </div>
         )}
 
-        {!loading && !error && exchange.topStocks.map(symbol => (
+        {!loading && !error && symbols.map(symbol => (
           <StockCard
             key={symbol}
             symbol={symbol}
@@ -77,6 +82,19 @@ export default function ExchangeSection({ exchange, onStockSelect }) {
           />
         ))}
       </div>
+
+      {/* Show more / less toggle */}
+      {!loading && !error && total > INITIAL_VISIBLE && (
+        <button
+          className="exchange-section__toggle"
+          onClick={() => setExpanded(e => !e)}
+        >
+          {expanded
+            ? `Show less ▲`
+            : `Show all ${total} stocks ▼`
+          }
+        </button>
+      )}
     </div>
   );
 }

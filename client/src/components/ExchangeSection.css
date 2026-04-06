@@ -84,14 +84,12 @@
   flex-shrink: 0;
 }
 
-/* ── Stock cards row ───────────────────────────────────────────────────────── */
+/* ── Stock cards grid ─────────────────────────────────────────────────────── */
 .exchange-section__stocks {
   display: flex;
-  gap: 0;
-  overflow-x: auto;
-  padding: 16px;
+  flex-wrap: wrap;
   gap: 10px;
-  scrollbar-width: thin;
+  padding: 16px;
 }
 
 .exchange-section__error {
@@ -100,6 +98,28 @@
   font-size: 0.85rem;
   width: 100%;
   text-align: center;
+}
+
+/* ── Show more / less button ───────────────────────────────────────────────── */
+.exchange-section__toggle {
+  display: block;
+  width: 100%;
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--blue);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  text-align: center;
+}
+
+.exchange-section__toggle:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-hover);
 }
 
 /* ── Skeleton loading ──────────────────────────────────────────────────────── */
